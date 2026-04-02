@@ -16,7 +16,7 @@ namespace Locus
                 .AddInteractiveServerComponents();
 
             builder.Services.AddDbContextFactory<AppDbContext>(options =>
-                options.UseNpgsql("Host=localhost;Port=5432;Database=seu-database;Username=seu-usuario;Password=sua-senha"));
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddRadzenComponents();
 
