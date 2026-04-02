@@ -1,7 +1,67 @@
-﻿@page "/"
+@page "/"
+@using Locus.Models
+@using Locus.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager NavigationManager
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Início — CETI - FUNDACAO</PageTitle>
 
-<h1>Hello, world!</h1>
+<RadzenText TextStyle="TextStyle.H3" class="rz-mb-6">Bem-vindo ao Sistema de Chamados — CETI - FUNDACAO</RadzenText>
 
-Welcome to your new app.
+<RadzenRow Gap="2rem">
+    <RadzenColumn Size="12" SizeMD="4">
+        <RadzenCard class="rz-variant-flat rz-background-color-primary-lighter rz-display-flex rz-flex-row rz-align-items-center rz-p-4" style="height: 120px;">
+            <RadzenIcon Icon="assignment" IconColor="@Colors.Primary" style="font-size: 3rem;" />
+            <RadzenStack class="rz-ml-4">
+                <RadzenText TextStyle="TextStyle.H6" class="rz-color-primary rz-mb-0">Chamados Abertos</RadzenText>
+                <RadzenText TextStyle="TextStyle.H4" class="rz-mb-0">@chamadosAbertos</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenColumn>
+    <RadzenColumn Size="12" SizeMD="4">
+        <RadzenCard class="rz-variant-flat rz-background-color-warning-lighter rz-display-flex rz-flex-row rz-align-items-center rz-p-4" style="height: 120px;">
+            <RadzenIcon Icon="build" IconColor="@Colors.Warning" style="font-size: 3rem;" />
+            <RadzenStack class="rz-ml-4">
+                <RadzenText TextStyle="TextStyle.H6" class="rz-color-warning rz-mb-0">Em Atendimento</RadzenText>
+                <RadzenText TextStyle="TextStyle.H4" class="rz-mb-0">@chamadosEmAndamento</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenColumn>
+    <RadzenColumn Size="12" SizeMD="4">
+        <RadzenCard class="rz-variant-flat rz-background-color-success-lighter rz-display-flex rz-flex-row rz-align-items-center rz-p-4" style="height: 120px;">
+            <RadzenIcon Icon="check_circle" IconColor="@Colors.Success" style="font-size: 3rem;" />
+            <RadzenStack class="rz-ml-4">
+                <RadzenText TextStyle="TextStyle.H6" class="rz-color-success rz-mb-0">Equipamentos</RadzenText>
+                <RadzenText TextStyle="TextStyle.H4" class="rz-mb-0">@totalEquipamentos</RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+<RadzenRow class="rz-mt-8">
+    <RadzenColumn Size="12">
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5" class="rz-mb-4">Acesso Rápido</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
+                <RadzenButton Text="Listar Chamados" Icon="list" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("/chamados"))" />
+                <RadzenButton Text="Novo Chamado" Icon="add" ButtonStyle="ButtonStyle.Secondary" Click="@(() => NavigationManager.NavigateTo("/chamados/novo"))" />
+                <RadzenButton Text="Ver Inventário" Icon="devices" ButtonStyle="ButtonStyle.Info" Click="@(() => NavigationManager.NavigateTo("/equipamentos"))" />
+            </RadzenStack>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    int chamadosAbertos = 0;
+    int chamadosEmAndamento = 0;
+    int totalEquipamentos = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        chamadosAbertos = await context.Chamados.CountAsync(c => c.Status == StatusChamado.Aberto);
+        chamadosEmAndamento = await context.Chamados.CountAsync(c => c.Status == StatusChamado.EmAndamento);
+        totalEquipamentos = await context.Equipamentos.CountAsync();
+    }
+}

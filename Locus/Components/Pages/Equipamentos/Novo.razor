@@ -1,0 +1,76 @@
+@page "/equipamentos/novo"
+@using Locus.Models
+@using Locus.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+
+<PageTitle>Novo Equipamento — CETI - FUNDACAO</PageTitle>
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" class="rz-mb-4">
+    <RadzenButton Icon="arrow_back" Click="@(() => NavigationManager.NavigateTo("/equipamentos"))" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" />
+    <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Cadastrar Equipamento</RadzenText>
+</RadzenStack>
+
+<RadzenRow>
+    <RadzenColumn Size="12">
+        <RadzenCard>
+            <RadzenTemplateForm TItem="Equipamento" Data="@equipamento" Submit="@OnSubmit">
+                <RadzenStack Gap="1.5rem">
+                    <RadzenFormField Text="Setor" Variant="Variant.Outlined">
+                        <RadzenDropDown @bind-Value=@equipamento.SetorId Data=@setores TextProperty="Nome" ValueProperty="Id" Name="SetorId" />
+                        <RadzenRequiredValidator Component="SetorId" Text="Setor é obrigatório" />
+                    </RadzenFormField>
+
+                    <RadzenFormField Text="Tipo de Equipamento (ex: Celular, Tablet, Desktop)" Variant="Variant.Outlined">
+                        <RadzenTextBox @bind-Value=@equipamento.Tipo Name="Tipo" Placeholder="Digite o tipo do equipamento..." />
+                        <RadzenRequiredValidator Component="Tipo" Text="O tipo do equipamento é obrigatório" />
+                    </RadzenFormField>
+
+                    <RadzenFormField Text="Modelo / Identificação" Variant="Variant.Outlined">
+                        <RadzenTextBox @bind-Value=@equipamento.Modelo Name="Modelo" 
+                                      Placeholder="Ex: Samsung Galaxy A54 ou Patrimônio 12345 ou Identificação do equipamento" />
+                        <small style="color: #6b7280; display: block; margin-top: 4px;">
+                            💡 Use marca + modelo, número de patrimônio ou identificação única do equipamento
+                        </small>
+                        <RadzenRequiredValidator Component="Modelo" Text="Modelo é obrigatório" />
+                    </RadzenFormField>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" class="rz-mt-4">
+                        <RadzenButton ButtonType="ButtonType.Button" Text="Cancelar" Click="@(() => NavigationManager.NavigateTo("/equipamentos"))" ButtonStyle="ButtonStyle.Secondary" />
+                        <RadzenButton ButtonType="ButtonType.Submit" Text="Salvar" ButtonStyle="ButtonStyle.Primary" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenTemplateForm>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    Equipamento equipamento = new Equipamento();
+    IEnumerable<Setor> setores = new List<Setor>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        setores = await context.Setores.OrderBy(s => s.Nome).ToListAsync();
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            context.Equipamentos.Add(equipamento);
+            await context.SaveChangesAsync();
+
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Sucesso", Detail = "Equipamento cadastrado com sucesso!" });
+            NavigationManager.NavigateTo("/equipamentos");
+        }
+        catch (Exception)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Erro", Detail = "Não foi possível cadastrar o equipamento." });
+        }
+    }
+}

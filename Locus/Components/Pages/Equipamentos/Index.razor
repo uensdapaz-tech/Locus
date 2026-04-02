@@ -1,0 +1,50 @@
+@page "/equipamentos"
+@using Locus.Models
+@using Locus.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Equipamentos — CETI - FUNDACAO</PageTitle>
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" class="rz-mb-4">
+    <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Inventário de Equipamentos</RadzenText>
+    <RadzenButton Icon="add" Text="Novo Equipamento" Click="@(() => NavigationManager.NavigateTo("/equipamentos/novo"))" ButtonStyle="ButtonStyle.Primary" />
+</RadzenStack>
+
+<RadzenDataGrid Data="@equipamentos" TItem="Equipamento" AllowFiltering="true" AllowPaging="true" PageSize="10" 
+                AllowSorting="true" AllowGrouping="true" Render="@OnRender" Responsive="true" class="rz-shadow-1">
+    <Columns>
+        <RadzenDataGridColumn TItem="Equipamento" Property="Setor.Nome" Title="Setor" Groupable="true" />
+        <RadzenDataGridColumn TItem="Equipamento" Property="Tipo" Title="Tipo" Width="150px" />
+        <RadzenDataGridColumn TItem="Equipamento" Property="Modelo" Title="Modelo / Identificação" />
+        <RadzenDataGridColumn TItem="Equipamento" Title="Chamados" Width="120px" TextAlign="TextAlign.Center" Filterable="false" Sortable="false">
+            <Template Context="equipamento">
+                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@equipamento.Chamados.Count.ToString()" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    IEnumerable<Equipamento> equipamentos = new List<Equipamento>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        equipamentos = await context.Equipamentos
+            .Include(e => e.Setor)
+            .Include(e => e.Chamados)
+            .OrderBy(e => e.Setor.Nome)
+            .ToListAsync();
+    }
+
+    void OnRender(DataGridRenderEventArgs<Equipamento> args)
+    {
+        if (args.FirstRender)
+        {
+            args.Grid.Groups.Add(new GroupDescriptor { Property = "Setor.Nome" });
+            StateHasChanged();
+        }
+    }
+}

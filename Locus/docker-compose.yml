@@ -1,0 +1,16 @@
+services:
+  locus-db:
+    image: postgres:16
+    container_name: locus-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: fundacao2023
+      POSTGRES_DB: locus_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - locus_data:/var/lib/postgresql/data
+
+volumes:
+  locus_data:

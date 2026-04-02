@@ -1,0 +1,243 @@
+@page "/chamados/editar/{Id:int}"
+@using Locus.Models
+@using Locus.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+
+<PageTitle>Editar Chamado — CETI - FUNDACAO</PageTitle>
+
+<div class="page-content-wrapper">
+    <RadzenCard class="form-card">
+        <!-- HEADER SECTION -->
+        <div class="header-area">
+            <RadzenButton Icon="arrow_back" Click="@(() => NavigationManager.NavigateTo("/chamados"))" 
+                         Class="btn-back" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat"
+                         title="Voltar para lista de chamados" />
+            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                <RadzenText TextStyle="TextStyle.H4" class="header-title">Editar Chamado #@Id</RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" class="header-subtitle">Atualize os dados do chamado</RadzenText>
+            </div>
+        </div>
+
+        <!-- FORM CONTENT -->
+        @if (chamado == null)
+        {
+            <div style="padding: 1.5rem; display: flex; align-items: center; justify-content: center; min-height: 300px;">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Carregando...</RadzenText>
+            </div>
+        }
+        else
+        {
+            <div style="flex: 1; padding: 1.5rem; display: flex; flex-direction: column; overflow: hidden;">
+                <RadzenTemplateForm TItem="Chamado" Data="@chamado" Submit="@OnSubmit" style="flex: 1; display: flex; flex-direction: column; overflow: auto;">
+
+                    <!-- SECTION 1: Status & Setor -->
+                    <div class="form-section">
+                        <RadzenText TextStyle="TextStyle.Subtitle2" class="section-title">Informações Básicas</RadzenText>
+                        <RadzenRow>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text="Status *" Variant="Variant.Outlined" style="width: 100%">
+                                    <RadzenDropDown @bind-Value=@chamado.Status Data=@Enum.GetValues(typeof(StatusChamado)) Name="Status" Style="width: 100%" />
+                                    <RadzenRequiredValidator Component="Status" Text="Status é obrigatório" />
+                                </RadzenFormField>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text="Setor *" Variant="Variant.Outlined" style="width: 100%">
+                                    <RadzenDropDown @bind-Value=@chamado.SetorId Data=@setores TextProperty="Nome" ValueProperty="Id" 
+                                                    Change=@OnSetorChange Name="SetorId" Style="width: 100%" 
+                                                    Placeholder="Selecione um setor..." />
+                                    <RadzenRequiredValidator Component="SetorId" Text="Setor é obrigatório" />
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </div>
+
+                    <!-- SECTION 2: Equipamento & Tipo de Serviço -->
+                    <div class="form-section">
+                        <RadzenText TextStyle="TextStyle.Subtitle2" class="section-title">Detalhes do Chamado</RadzenText>
+                        <RadzenRow>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text="Equipamento (Opcional)" Variant="Variant.Outlined" style="width: 100%">
+                                    <RadzenDropDown @bind-Value=@chamado.EquipamentoId Data=@equipamentosFiltrados 
+                                                    TextProperty="Modelo" ValueProperty="Id" AllowClear="true"
+                                                    Placeholder="@GetEquipamentoPlaceholder()" Style="width: 100%"
+                                                    Name="EquipamentoId" />
+                                    @if (chamado?.SetorId > 0 && equipamentosFiltrados.Count() == 0)
+                                    {
+                                        <small style="color: #ff6b6b; margin-top: 4px; display: block;">
+                                            ℹ️ Nenhum equipamento cadastrado para este setor
+                                        </small>
+                                    }
+                                </RadzenFormField>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text="Tipo de Serviço *" Variant="Variant.Outlined" style="width: 100%">
+                                    <RadzenDropDown @bind-Value=@chamado.TipoServicoId Data=@tiposServico TextProperty="Nome" ValueProperty="Id" 
+                                                    Name="TipoServicoId" Style="width: 100%"
+                                                    Placeholder="Selecione um tipo..." />
+                                    <RadzenRequiredValidator Component="TipoServicoId" Text="Tipo de serviço é obrigatório" />
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </div>
+
+                    <!-- SECTION 3: Data -->
+                    <div class="form-section">
+                        <RadzenText TextStyle="TextStyle.Subtitle2" class="section-title">Data</RadzenText>
+                        <RadzenFormField Text="Data de Abertura *" Variant="Variant.Outlined" style="width: 100%">
+                            <RadzenDatePicker @bind-Value=@chamado.DataAbertura ShowTime="true" 
+                                             Name="DataAbertura" Style="width: 100%"
+                                             DateFormat="dd/MM/yyyy" />
+                            <RadzenRequiredValidator Component="DataAbertura" Text="Data de abertura é obrigatória" />
+                        </RadzenFormField>
+                    </div>
+
+                    <!-- SECTION 4: Description -->
+                    <div class="form-section" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                        <RadzenText TextStyle="TextStyle.Subtitle2" class="section-title">Descrição</RadzenText>
+                        <RadzenFormField Text="Descrição do Problema *" Variant="Variant.Outlined" 
+                                        style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                            <RadzenTextArea @bind-Value=@chamado.Descricao Name="Descricao" 
+                                           style="flex: 1; width: 100%;" 
+                                           Placeholder="Descreva detalhadamente o problema encontrado..."
+                                           rows="6" />
+                            <RadzenRequiredValidator Component="Descricao" Text="Descrição é obrigatória" />
+                        </RadzenFormField>
+                    </div>
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="form-actions">
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem">
+                            <RadzenButton ButtonType="ButtonType.Button" Text="Cancelar" 
+                                         Click="@(() => NavigationManager.NavigateTo("/chamados"))" 
+                                         Class="btn-cancel" Icon="close" />
+                            <RadzenButton ButtonType="ButtonType.Submit" Text="Atualizar Chamado" 
+                                         Class="btn-submit" Icon="check" />
+                        </RadzenStack>
+                    </div>
+
+                </RadzenTemplateForm>
+            </div>
+        }
+    </RadzenCard>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    Chamado? chamado;
+    IEnumerable<Setor> setores = new List<Setor>();
+    IEnumerable<Equipamento> todosEquipamentos = new List<Equipamento>();
+    IEnumerable<Equipamento> equipamentosFiltrados = new List<Equipamento>();
+    IEnumerable<TipoServico> tiposServico = new List<TipoServico>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        setores = await context.Setores.OrderBy(s => s.Nome).ToListAsync();
+        todosEquipamentos = await context.Equipamentos
+            .Include(e => e.Setor)
+            .OrderBy(e => e.Modelo)
+            .ToListAsync();
+        tiposServico = await context.TiposServico.OrderBy(t => t.Nome).ToListAsync();
+
+        chamado = await context.Chamados
+            .Include(c => c.Setor)
+            .Include(c => c.Equipamento)
+            .Include(c => c.TipoServico)
+            .FirstOrDefaultAsync(c => c.Id == Id);
+
+        if (chamado != null && chamado.SetorId > 0)
+        {
+            equipamentosFiltrados = todosEquipamentos.Where(e => e.SetorId == chamado.SetorId).ToList();
+        }
+        else
+        {
+            equipamentosFiltrados = new List<Equipamento>();
+        }
+    }
+
+    void OnSetorChange()
+    {
+        if (chamado != null)
+        {
+            if (chamado.SetorId > 0)
+            {
+                equipamentosFiltrados = todosEquipamentos
+                    .Where(e => e.SetorId == chamado.SetorId)
+                    .ToList();
+            }
+            else
+            {
+                equipamentosFiltrados = new List<Equipamento>();
+            }
+            chamado.EquipamentoId = null;
+            StateHasChanged();
+        }
+    }
+
+    string GetEquipamentoPlaceholder()
+    {
+        if (chamado?.SetorId <= 0)
+            return "Selecione um setor primeiro...";
+
+        if (equipamentosFiltrados.Count() == 0)
+            return "Nenhum equipamento disponível";
+
+        return "Selecione um equipamento...";
+    }
+
+    async Task OnSubmit()
+    {
+        if (chamado == null) return;
+
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            context.Chamados.Update(chamado);
+            await context.SaveChangesAsync();
+
+            NotificationService.Notify(new NotificationMessage 
+            { 
+                Severity = NotificationSeverity.Success, 
+                Summary = "Sucesso", 
+                Detail = "Chamado atualizado com sucesso!",
+                Duration = 3000
+            });
+            NavigationManager.NavigateTo("/chamados");
+        }
+        catch (Exception)
+        {
+            NotificationService.Notify(new NotificationMessage 
+            { 
+                Severity = NotificationSeverity.Error, 
+                Summary = "Erro", 
+                Detail = "Não foi possível atualizar o chamado.",
+                Duration = 4000
+            });
+        }
+    }
+}
+
+    async Task OnSubmit()
+    {
+        if (chamado == null) return;
+
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            context.Chamados.Update(chamado);
+            await context.SaveChangesAsync();
+
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Sucesso", Detail = "Chamado atualizado com sucesso!" });
+            NavigationManager.NavigateTo("/chamados");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Erro", Detail = "Não foi possível atualizar o chamado." });
+        }
+    }
+}

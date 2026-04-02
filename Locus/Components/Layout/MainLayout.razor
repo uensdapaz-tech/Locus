@@ -1,9 +1,34 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
 
-@Body
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-0" style="color: white; margin-left: 1rem;">CETI - FUNDACAO — Sistema de Chamados</RadzenText>
+        </RadzenStack>
+    </RadzenHeader>
 
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>
+    <RadzenSidebar>
+        <RadzenPanelMenu>
+            <RadzenPanelMenuItem Text="Início" Icon="home" Path="" />
+            <RadzenPanelMenuItem Text="Chamados" Icon="assignment" Path="chamados" />
+            <RadzenPanelMenuItem Text="Novo Chamado" Icon="add_circle" Path="chamados/novo" />
+            <RadzenPanelMenuItem Text="Equipamentos" Icon="devices" Path="equipamentos" />
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+
+    <RadzenBody>
+        @Body
+    </RadzenBody>
+    <RadzenNotification />
+</RadzenLayout>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("window.localStorage.setItem", "sidebarExpanded", "true");
+        }
+    }
+}

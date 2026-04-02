@@ -1,4 +1,7 @@
 using Locus.Components;
+using Locus.Data;
+using Microsoft.EntityFrameworkCore;
+using Radzen;
 
 namespace Locus
 {
@@ -11,6 +14,11 @@ namespace Locus
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
+
+            builder.Services.AddDbContextFactory<AppDbContext>(options =>
+                options.UseNpgsql("Host=localhost;Port=5432;Database=seu-database;Username=seu-usuario;Password=sua-senha"));
+
+            builder.Services.AddRadzenComponents();
 
             var app = builder.Build();
 

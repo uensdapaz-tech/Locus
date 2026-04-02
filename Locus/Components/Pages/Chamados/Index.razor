@@ -1,0 +1,134 @@
+@page "/chamados"
+@using Locus.Models
+@using Locus.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Fundacao - CETI</PageTitle>
+
+<div class="page-content-wrapper">
+    <div>
+        <!-- HEADER -->
+        <div class="page-header">
+            <div>
+                <RadzenText TextStyle="TextStyle.H3" class="page-title">Chamados</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2" class="page-subtitle">Gerenciamento de chamados do sistema</RadzenText>
+            </div>
+            <RadzenButton Icon="add" Text="Novo Chamado" Click="@(() => NavigationManager.NavigateTo("/chamados/novo"))" ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <!-- FILTERS CARD -->
+        <RadzenCard class="filters-card">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1.5rem" AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap">
+                <div class="filter-group">
+                    <RadzenFormField Text="Setor" Variant="Variant.Outlined" style="width: 200px;">
+                        <RadzenDropDown @bind-Value=@selectedSetorId Data=@setores TextProperty="Nome" ValueProperty="Id" AllowClear="true" Change=@FilterGrid Placeholder="Todos os setores" />
+                    </RadzenFormField>
+                </div>
+                <div class="filter-group">
+                    <RadzenFormField Text="Data Início" Variant="Variant.Outlined" style="width: 150px;">
+                        <RadzenDatePicker @bind-Value=@startDate Change=@FilterGrid DateFormat="dd/MM/yyyy" />
+                    </RadzenFormField>
+                </div>
+                <div class="filter-group">
+                    <RadzenFormField Text="Data Fim" Variant="Variant.Outlined" style="width: 150px;">
+                        <RadzenDatePicker @bind-Value=@endDate Change=@FilterGrid DateFormat="dd/MM/yyyy" />
+                    </RadzenFormField>
+                </div>
+                <RadzenButton Icon="refresh" Click="@ResetFilters" ButtonStyle="ButtonStyle.Secondary" Text="Limpar Filtros" />
+            </RadzenStack>
+        </RadzenCard>
+
+        <!-- DATA GRID CARD -->
+        <RadzenCard class="grid-card">
+            <RadzenDataGrid @ref="grid" Data="@filteredChamados" TItem="Chamado" AllowFiltering="true" AllowPaging="true" PageSize="10" 
+                            AllowSorting="true" FilterMode="FilterMode.Simple" Responsive="true">
+                <Columns>
+                    <RadzenDataGridColumn TItem="Chamado" Property="DataAbertura" Title="Data" FormatString="{0:dd/MM/yyyy}" Width="120px" />
+                    <RadzenDataGridColumn TItem="Chamado" Property="Setor.Nome" Title="Setor" Width="150px" />
+                    <RadzenDataGridColumn TItem="Chamado" Property="Descricao" Title="Descrição" />
+                    <RadzenDataGridColumn TItem="Chamado" Property="Equipamento.Modelo" Title="Equipamento" Width="180px">
+                        <Template Context="chamado">
+                            @(chamado.Equipamento?.Modelo ?? (chamado.Equipamento?.Tipo.ToString() ?? "—"))
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="Chamado" Property="Status" Title="Status" Width="150px" TextAlign="TextAlign.Center">
+                        <Template Context="chamado">
+                            <RadzenBadge BadgeStyle="@GetBadgeStyle(chamado.Status)" Text="@chamado.Status.ToString()" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="Chamado" Context="chamado" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="100px">
+                        <Template Context="chamado">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"/chamados/editar/{chamado.Id}"))" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenCard>
+    </div>
+</div>
+
+@code {
+    RadzenDataGrid<Chamado>? grid;
+    IEnumerable<Chamado> chamados = new List<Chamado>();
+    IEnumerable<Chamado> filteredChamados = new List<Chamado>();
+    IEnumerable<Setor> setores = new List<Setor>();
+
+    int? selectedSetorId;
+    DateTime? startDate;
+    DateTime? endDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        setores = await context.Setores.OrderBy(s => s.Nome).ToListAsync();
+        chamados = await context.Chamados
+            .Include(c => c.Setor)
+            .Include(c => c.Equipamento)
+            .Include(c => c.TipoServico)
+            .OrderByDescending(c => c.DataAbertura)
+            .ToListAsync();
+
+        filteredChamados = chamados;
+    }
+
+    void FilterGrid()
+    {
+        filteredChamados = chamados;
+
+        if (selectedSetorId.HasValue)
+        {
+            filteredChamados = filteredChamados.Where(c => c.SetorId == selectedSetorId.Value);
+        }
+
+        if (startDate.HasValue)
+        {
+            filteredChamados = filteredChamados.Where(c => c.DataAbertura >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            filteredChamados = filteredChamados.Where(c => c.DataAbertura <= endDate.Value.AddDays(1));
+        }
+    }
+
+    void ResetFilters()
+    {
+        selectedSetorId = null;
+        startDate = null;
+        endDate = null;
+        filteredChamados = chamados;
+    }
+
+    BadgeStyle GetBadgeStyle(StatusChamado status)
+    {
+        return status switch
+        {
+            StatusChamado.Aberto => BadgeStyle.Danger,
+            StatusChamado.EmAndamento => BadgeStyle.Warning,
+            StatusChamado.Concluido => BadgeStyle.Success,
+            _ => BadgeStyle.Info
+        };
+    }
+}
